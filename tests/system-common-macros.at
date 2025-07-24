@@ -299,6 +299,17 @@ m4_define([OVS_START_L7],
    ]
 )
 
+# NETNS_START_TCPDUMP([namespace], [params], [name])
+#
+# Helper to properly start tcpdump and wait for the startup.
+# The tcpdump output is available in <name>.tcpdump file.
+m4_define([NETNS_START_TCPDUMP],
+    [
+     NETNS_DAEMONIZE([$1], [tcpdump -l $2 >$3.tcpdump 2>$3.stderr], [$3.pid])
+     OVS_WAIT_UNTIL([grep -q "listening" $3.stderr])
+    ]
+)
+
 # OVS_CHECK_VXLAN()
 #
 # Do basic check for vxlan functionality, skip the test if it's not there.
