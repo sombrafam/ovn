@@ -1,5 +1,9 @@
 OVN v25.03.2 - xx xxx xxxx
 --------------------------
+   - Added new NB_Global option 'acl_udp_ct_translation' to control whether
+     stateful ACL rules that match on UDP port fields are rewritten to use
+     connection tracking fields to properly handle IP fragments. Default is
+     false.
    - Dynamic Routing:
      * Add the option "dynamic-routing-redistribute-local-only" to Logical
        Routers and Logical Router Ports which refines the way in which
