@@ -272,7 +272,9 @@ CHECK_PYFILES = \
 	tests/uuidfilt.py \
 	tests/test-tcp-rst.py \
 	tests/check_acl_log.py \
-	tests/scapy-server.py
+	tests/scapy-server.py \
+	tests/udp_client.py \
+	tests/tcp_simple.py
 
 EXTRA_DIST += $(CHECK_PYFILES)
 PYCOV_CLEAN_FILES += $(CHECK_PYFILES:.py=.py,cover) .coverage
