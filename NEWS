@@ -1,5 +1,9 @@
 OVN v24.03.7 - xx xxx xxxx
 --------------------------
+   - Added new NB_Global option 'acl_udp_ct_translation' to control whether
+     stateful ACL rules that match on UDP port fields are rewritten to use
+     connection tracking fields to properly handle IP fragments. Default is
+     false.
 
 OVN v24.03.6 - 13 Jun 2025
 --------------------------

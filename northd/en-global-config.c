@@ -552,6 +552,10 @@ check_nb_options_out_of_sync(const struct nbrec_nb_global *nb,
                            "install_ls_lb_from_router", false)) {
         return true;
     }
+    if (config_out_of_sync(&nb->options, &config_data->nb_options,
+        "acl_udp_ct_translation", false)) {
+        return true;
+    }
 
     return false;
 }
