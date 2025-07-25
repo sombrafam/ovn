@@ -340,7 +340,11 @@ ct_mark.ecmp_reply_port = ct_mark[16..31]
 ct_mark.force_snat = ct_mark[3]
 ct_mark.natted = ct_mark[1]
 ct_mark.skip_snat = ct_mark[2]
+ct_proto = NXM_NX_CT_NW_PROTO
 ct_state = NXM_NX_CT_STATE
+ct_udp = ct_proto == 17
+ct_udp.dst = NXM_NX_CT_TP_DST
+ct_udp.src = NXM_NX_CT_TP_SRC
 ]])
 AT_CLEANUP
 
