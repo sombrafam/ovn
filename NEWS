@@ -1,4 +1,8 @@
 OVN v22.03.3 - 29 Aug 2023
+   - Added new NB_Global option 'udp_ct_translation' to control whether
+     stateful ACL rules that match on UDP port fields are rewritten to use
+     connection tracking fields to properly handle IP fragments. Default is
+     false.
 --------------------------
   - Bug fixes
   - Always allow IPv6 Router Discovery, Neighbor Discovery, and Multicast
