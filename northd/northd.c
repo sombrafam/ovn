@@ -7400,7 +7400,7 @@ extract_port_value(const char *match, const char *field, char *port_buf,
 static char *
 rewrite_match_for_fragments(const char *match_str)
 {
-    VLOG_DBG("rewrite_match_for_fragments called with: %s", match_str);
+    VLOG_INFO("rewrite_match_for_fragments called with: %s", match_str);
     struct ds new_match = DS_EMPTY_INITIALIZER;
     bool has_udp = false;
     bool has_udp_dst = false;
@@ -7451,16 +7451,7 @@ rewrite_match_for_fragments(const char *match_str)
             ds_put_cstr(&new_match, " && ");
         }
         ds_put_cstr(&new_match, "udp");
-    }
 
-    /* Add ct.new condition */
-    if (new_match.length > 0) {
-        ds_put_cstr(&new_match, " && ");
-    }
-    ds_put_cstr(&new_match, "ct.new");
-
-    /* Process UDP conditions if UDP protocol was found */
-    if (has_udp) {
         /* Handle destination port conditions */
         if (has_udp_dst) {
             /* Check for exact match */
@@ -7525,12 +7516,18 @@ rewrite_match_for_fragments(const char *match_str)
                 ds_put_format(&new_match, " && ct_udp.src == %s", port_buf);
             }
         }
+
+        /* Add ct.new condition */
+        if (new_match.length > 0) {
+            ds_put_cstr(&new_match, " && ");
+        }
+        ds_put_cstr(&new_match, "(ct.new || ct.est || ct.rpl)");
     }
 
     /* Return the result */
     char *result = xstrdup(ds_cstr(&new_match));
     ds_destroy(&new_match);
-    VLOG_DBG("rewrite_match_for_fragments returning: %s", result);
+    VLOG_INFO("rewrite_match_for_fragments returning: %s", result);
     return result;
 }
 

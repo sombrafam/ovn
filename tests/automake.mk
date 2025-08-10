@@ -323,7 +323,8 @@ CHECK_PYFILES = \
 	tests/check_acl_log.py \
 	tests/scapy-server.py \
 	tests/client.py \
-	tests/server.py
+	tests/server.py \
+	tests/udp_client.py
 
 EXTRA_DIST += $(CHECK_PYFILES)
 PYCOV_CLEAN_FILES += $(CHECK_PYFILES:.py=.py,cover) .coverage
