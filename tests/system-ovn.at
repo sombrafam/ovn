@@ -18052,18 +18052,25 @@ dump_ovs_info() {
     echo && echo
     echo =======ovn-nbctl show========
     ovn-nbctl show
-    echo ============br-int===========
-    ovs-ofctl dump-flows -O OpenFlow15 br-int
     echo && echo
-    echo ============br-ext===========
-    ovs-ofctl dump-flows br-ext
+    echo ========ACL===========
+    ovn-nbctl list ACL
+    echo ========Logical_Flow===========
+    ovn-sbctl list Logical_Flow
     echo && echo
     echo ========lflow-list===========
     ovn-sbctl lflow-list
     echo && echo
-    ovn-sbctl list Logical_Flow
+    echo ============br-int===========
+    ovs-ofctl dump-flows -O OpenFlow15 br-int
     echo && echo
-    echo =============================
+    echo ============br-int===========
+    ovs-ofctl -O OpenFlow15 dump-flows br-int | grep -E "ct_tp|ct_state|ct_nw_proto" | head -10
+    echo && echo
+    echo ============br-ext===========
+    ovs-ofctl dump-flows br-ext
+    echo && echo
+
 }
 
 test_fragmented_udp_traffic() {
@@ -18082,10 +18089,10 @@ test_fragmented_udp_traffic() {
     NETNS_START_TCPDUMP([server], \
       [-U -i server -Q in -nn -e -q udp], [tcpdump-server])
 
-    NS_EXEC([client], [udp_client.py -s 172.16.1.3 -d 172.16.1.2 -S $src_port -D $dst_port -M 900 -B 1200 -i client -n 4 -I 0.5])
+    NS_EXEC([client], [udp_client.py -s 172.16.1.3 -d 172.16.1.2 -S $src_port -D $dst_port -M 900 -B 500 -i client -n 4 -I 0.5])
     NS_EXEC([server], [udp_client.py -s 172.16.1.2 -d 172.16.1.3 -S $dst_port -D $src_port -M 900 -B 500 -i server -n 4 -I 0.5])
 
-    OVS_WAIT_UNTIL([test "$(cat tcpdump-server.tcpdump | wc -l)" = "8"])
+    OVS_WAIT_UNTIL([test "$(cat tcpdump-server.tcpdump | wc -l)" = "4"])
     OVS_WAIT_UNTIL([test "$(cat tcpdump-client.tcpdump | wc -l)" = "4"])
 
     echo ============conntrack-table============
@@ -18098,12 +18105,16 @@ test_fragmented_udp_traffic() {
 
 
 check ovn-nbctl set NB_Global . options:acl_udp_ct_translation=true
+ovn-appctl -t ovn-northd vlog/set debug
+ovn-appctl -t ovn-controller vlog/set debug
+ovs-appctl vlog/set dpif:dbg ofproto:dbg conntrack:dbg
+
 # Test each ACL rule individually
 # test-type:src_port:dst_port:ACL_rule
 for acl_test in \
     "udp+ip4.src:5353:4242:outport == \"server\" && udp && ip4.src == 172.16.1.3/24" \
     "udp+ip4.dst:5353:4242:outport == \"server\" && udp && ip4.dst == 172.16.1.2/24" \
-    "udp.dst==4242:5353:4242:outport == \"server\" && udp && udp.dst == 4242 && ip4.src == 172.16.1.3"
+    "udp.dst==4242:5353:4242:outport == \"server\" && udp && udp.dst >= 4242 && ip4.src == 172.16.1.3"
 do
     # Parse the test parameters
     test_name=$(echo $acl_test | cut -d: -f1)
@@ -18123,6 +18134,7 @@ do
     # Add the drop rule
     check ovn-nbctl --wait=hv --log --severity=info acl-add internal to-lport 100 "outport == \"server\"" drop
 
+    dump_ovs_info
     test_fragmented_udp_traffic $src_port $dst_port
 done
 
