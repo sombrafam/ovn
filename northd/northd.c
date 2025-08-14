@@ -6415,12 +6415,6 @@ rewrite_match_for_fragments(const char *match_str)
         token = strtok_r(NULL, "&&", &saveptr);
     }
 
-    /* Add ct.new condition */
-    if (new_match.length > 0) {
-        ds_put_cstr(&new_match, " && ");
-    }
-    ds_put_cstr(&new_match, "ct.new");
-
     /* Second pass: Add connection tracking L4 matches */
     free(str_copy);
     str_copy = xstrdup(match_str);
@@ -6435,6 +6429,12 @@ rewrite_match_for_fragments(const char *match_str)
     if ((port = extract_port_value(match_str, "udp.src"))) {
         ds_put_format(&new_match, " && ct_udp.src == %s", port);
     }
+
+    /* Add ct.new condition */
+    if (new_match.length > 0) {
+        ds_put_cstr(&new_match, " && ");
+    }
+    ds_put_cstr(&new_match, "(ct.new || ct.est || ct.rpl)");
 
     /* Clean up and return the result */
     free(str_copy);
