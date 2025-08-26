@@ -58,7 +58,7 @@ def main():
         # fragment.
         base_len = max(0, int(args.mtu) - 28)
         min_len_to_fragment = max(0, fragsize - 8 + 1)
-        payload_len = (base_len if base_len > min_len_to_fragment else 
+        payload_len = (base_len if base_len > min_len_to_fragment else
                        fragsize * 2)
         payload = b"x" * payload_len
     else:
@@ -81,7 +81,7 @@ def main():
             # Errno 90: Message too long (likely iface MTU < chosen --mtu)
             if getattr(e, "errno", None) == 90:
                 iface_mtu = read_iface_mtu(args.iface)
-                mtu_note = (f"iface_mtu={iface_mtu}" if iface_mtu is not None 
+                mtu_note = (f"iface_mtu={iface_mtu}" if iface_mtu is not None
                             else "iface_mtu=unknown")
                 print("ERROR: packet exceeds interface MTU. "
                     f"iface={args.iface} {mtu_note} chosen_mtu="
