@@ -7517,11 +7517,11 @@ rewrite_match_for_fragments(const char *match_str)
             }
         }
 
-        /* Add ct.new condition */
+        /* Add !ct.inv condition */
         if (new_match.length > 0) {
             ds_put_cstr(&new_match, " && ");
         }
-        ds_put_cstr(&new_match, "(ct.new || ct.est || ct.rpl)");
+        ds_put_cstr(&new_match, "!ct.inv && ct_proto == 17");
     }
 
     /* Return the result */

@@ -324,7 +324,8 @@ CHECK_PYFILES = \
 	tests/scapy-server.py \
 	tests/client.py \
 	tests/server.py \
-	tests/udp_client.py
+	tests/udp_client.py \
+	tests/tcp_simple.py
 
 EXTRA_DIST += $(CHECK_PYFILES)
 PYCOV_CLEAN_FILES += $(CHECK_PYFILES:.py=.py,cover) .coverage
