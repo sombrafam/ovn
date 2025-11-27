@@ -156,6 +156,15 @@ void lflow_table_add_lflow(struct lflow_table *, const struct ovn_datapath *,
     ovn_lflow_add_with_hint__(LFLOW_TABLE, OD, STAGE, PRIORITY, MATCH, \
                               ACTIONS, NULL, CTRL_METER, NULL, LFLOW_REF)
 
+/* Macro to add a logical flow with a hint and flow_desc.
+ * This is useful for passing metadata like "acl-ct-translation" marker. */
+#define ovn_lflow_add_with_hint_and_desc(LFLOW_TABLE, OD, STAGE, PRIORITY, \
+                                         MATCH, ACTIONS, STAGE_HINT, \
+                                         FLOW_DESC, LFLOW_REF) \
+    lflow_table_add_lflow(LFLOW_TABLE, OD, NULL, 0, STAGE, PRIORITY, MATCH, \
+                          ACTIONS, NULL, NULL, STAGE_HINT, \
+                          OVS_SOURCE_LOCATOR, FLOW_DESC, LFLOW_REF)
+
 struct sbrec_logical_dp_group;
 
 struct ovn_dp_group {

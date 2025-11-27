@@ -1122,6 +1122,12 @@ sync_lflow_to_sb(struct ovn_lflow *lflow,
         if (lflow->stage_hint) {
             smap_add(&ids, "stage-hint", lflow->stage_hint);
         }
+        /* If flow_desc is "acl-ct-translation", add marker to external_ids
+         * to signal ovn-controller to use alternative symtab for parsing. */
+        if (lflow->flow_desc &&
+            !strcmp(lflow->flow_desc, "acl-ct-translation")) {
+            smap_add(&ids, "acl-ct-translation", "true");
+        }
         sbrec_logical_flow_set_external_ids(sbflow, &ids);
         smap_destroy(&ids);
 
@@ -1136,6 +1142,8 @@ sync_lflow_to_sb(struct ovn_lflow *lflow,
                                                   "stage-hint", "");
             const char *source = smap_get_def(&sbflow->external_ids,
                                               "source", "");
+            const char *acl_ct_trans = smap_get_def(&sbflow->external_ids,
+                                                    "acl-ct-translation", "");
 
             if (strcmp(stage_name, ovn_stage_to_str(lflow->stage))) {
                 sbrec_logical_flow_update_external_ids_setkey(
@@ -1164,6 +1172,19 @@ sync_lflow_to_sb(struct ovn_lflow *lflow,
                 if (strcmp(source, where)) {
                     sbrec_logical_flow_update_external_ids_setkey(
                         sbflow, "source", where);
+                }
+            }
+            /* Update acl-ct-translation marker if needed */
+            bool needs_ct_trans = (lflow->flow_desc &&
+                                   !strcmp(lflow->flow_desc, "acl-ct-translation"));
+            const char *expected_value = needs_ct_trans ? "true" : "";
+            if (strcmp(acl_ct_trans, expected_value)) {
+                if (needs_ct_trans) {
+                    sbrec_logical_flow_update_external_ids_setkey(
+                        sbflow, "acl-ct-translation", "true");
+                } else {
+                    sbrec_logical_flow_update_external_ids_delkey(
+                        sbflow, "acl-ct-translation");
                 }
             }
         }

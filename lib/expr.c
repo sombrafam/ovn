@@ -1818,6 +1818,44 @@ expr_symtab_destroy(struct shash *symtab)
         free(symbol);
     }
 }
+
+/* Clones 'src' symtab into 'dst'. 'dst' must be an initialized empty shash.
+ * The caller is responsible for destroying 'dst' with expr_symtab_destroy()
+ * when done. */
+void
+expr_symtab_clone(struct shash *dst, const struct shash *src)
+{
+    struct shash_node *node;
+
+    /* First pass: clone all symbols with NULL parent pointers. */
+    SHASH_FOR_EACH (node, src) {
+        const struct expr_symbol *orig = node->data;
+        struct expr_symbol *clone = xmalloc(sizeof *clone);
+
+        clone->name = xstrdup(orig->name);
+        clone->width = orig->width;
+        clone->field = orig->field;
+        clone->ovn_field = orig->ovn_field;
+        clone->parent = NULL;  /* Will fix up in second pass. */
+        clone->parent_ofs = orig->parent_ofs;
+        clone->predicate = nullable_xstrdup(orig->predicate);
+        clone->level = orig->level;
+        clone->prereqs = nullable_xstrdup(orig->prereqs);
+        clone->must_crossproduct = orig->must_crossproduct;
+        clone->rw = orig->rw;
+
+        shash_add(dst, clone->name, clone);
+    }
+
+    /* Second pass: fix up parent pointers. */
+    SHASH_FOR_EACH (node, src) {
+        const struct expr_symbol *orig = node->data;
+        if (orig->parent) {
+            struct expr_symbol *clone = shash_find_data(dst, orig->name);
+            clone->parent = shash_find_data(dst, orig->parent->name);
+        }
+    }
+}
 
 /* Cloning. */
 

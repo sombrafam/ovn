@@ -51,10 +51,84 @@ COVERAGE_DEFINE(consider_logical_flow);
 /* Contains "struct expr_symbol"s for fields supported by OVN lflows. */
 static struct shash symtab;
 
+/* Alternative symbol table for ACL CT translation.
+ * This symbol table is used when processing ACLs that need to match on
+ * fragmented packets. It maps L4 protocol fields to their connection
+ * tracking equivalents, allowing fragments to be matched correctly.
+ *
+ * For example, "udp.dst" is mapped to MFF_CT_TP_DST instead of MFF_UDP_DST,
+ * so that all fragments (not just the first) can be matched based on the
+ * connection tracking state.
+ */
+static struct shash acl_ct_symtab;
+
+/* Helper to remove a symbol from a symtab, freeing its memory. */
+static void
+symtab_remove_symbol(struct shash *st, const char *name)
+{
+    struct expr_symbol *symbol = shash_find_and_delete(st, name);
+    if (symbol) {
+        free(symbol->name);
+        free(symbol->prereqs);
+        free(symbol->predicate);
+        free(symbol);
+    }
+}
+
+void
+ovn_init_acl_ct_symtab(struct shash *acl_symtab)
+{
+    /* Clone the normal symbol table as our starting point. */
+    shash_init(acl_symtab);
+    expr_symtab_clone(acl_symtab, &symtab);
+
+    /* Remove the original tcp/udp/sctp symbols that we will override.
+     * Must remove subfields first since they reference the parent. */
+    symtab_remove_symbol(acl_symtab, "tcp.src");
+    symtab_remove_symbol(acl_symtab, "tcp.dst");
+    symtab_remove_symbol(acl_symtab, "tcp");
+    symtab_remove_symbol(acl_symtab, "udp.src");
+    symtab_remove_symbol(acl_symtab, "udp.dst");
+    symtab_remove_symbol(acl_symtab, "udp");
+    symtab_remove_symbol(acl_symtab, "sctp.src");
+    symtab_remove_symbol(acl_symtab, "sctp.dst");
+    symtab_remove_symbol(acl_symtab, "sctp");
+
+    /* Add ct_proto field - CT original direction protocol.
+     * This is used in the tcp/udp/sctp predicate expansions below. */
+    expr_symtab_add_field(acl_symtab, "ct_proto", MFF_CT_NW_PROTO,
+                          "ct.trk", false);
+
+    /* Override TCP protocol and port fields to use CT equivalents.
+     * When "tcp" is used as a predicate, it expands to "ct_proto == 6"
+     * instead of "ip.proto == 6". This ensures we match on the CT state
+     * which is available for all fragments. */
+    expr_symtab_add_predicate(acl_symtab, "tcp", "ct.new && !ct.inv && ct_proto == 6");
+    expr_symtab_add_field(acl_symtab, "tcp.src", MFF_CT_TP_SRC,
+                          "tcp", false);
+    expr_symtab_add_field(acl_symtab, "tcp.dst", MFF_CT_TP_DST,
+                          "tcp", false);
+
+    /* Override UDP protocol and port fields */
+    expr_symtab_add_predicate(acl_symtab, "udp", "ct.new && !ct.inv && ct_proto == 17");
+    expr_symtab_add_field(acl_symtab, "udp.src", MFF_CT_TP_SRC,
+                          "udp", false);
+    expr_symtab_add_field(acl_symtab, "udp.dst", MFF_CT_TP_DST,
+                          "udp", false);
+
+    /* Override SCTP protocol and port fields */
+    expr_symtab_add_predicate(acl_symtab, "sctp", "ct.new && !ct.inv && ct_proto == 132");
+    expr_symtab_add_field(acl_symtab, "sctp.src", MFF_CT_TP_SRC,
+                          "sctp", false);
+    expr_symtab_add_field(acl_symtab, "sctp.dst", MFF_CT_TP_DST,
+                          "sctp", false);
+}
+
 void
 lflow_init(void)
 {
     ovn_init_symtab(&symtab);
+    ovn_init_acl_ct_symtab(&acl_ct_symtab);
 }
 
 struct lookup_port_aux {
@@ -984,7 +1058,24 @@ convert_match_to_expr(const struct sbrec_logical_flow *lflow,
                      lflow->match);
         return NULL;
     }
-    struct expr *e = expr_parse_string(lex_str_get(&match_s), &symtab,
+
+    /* Check if this logical flow requires ACL CT translation.
+     * If the external_ids contains "acl-ct-translation"="true",
+     * we use the alternative symbol table that maps L4 fields to CT fields. */
+    const char *use_ct_translation =
+        smap_get(&lflow->external_ids, "acl-ct-translation");
+    bool using_ct_symtab = use_ct_translation &&
+                           !strcmp(use_ct_translation, "true");
+    struct shash *symtab_to_use = using_ct_symtab ? &acl_ct_symtab : &symtab;
+
+    if (strstr(lflow->match, "udp")) {
+        VLOG_DBG("lflow match='%s', acl-ct-translation='%s', using_ct_symtab=%d",
+                 lflow->match,
+                 use_ct_translation ? use_ct_translation : "(null)",
+                 using_ct_symtab);
+    }
+
+    struct expr *e = expr_parse_string(lex_str_get(&match_s), symtab_to_use,
                                        addr_sets, port_groups, &addr_sets_ref,
                                        &port_groups_ref,
                                        ldp->datapath->tunnel_key,
@@ -1016,7 +1107,7 @@ convert_match_to_expr(const struct sbrec_logical_flow *lflow,
             e = expr_combine(EXPR_T_AND, e, *prereqs);
             *prereqs = NULL;
         }
-        e = expr_annotate(e, &symtab, &error);
+        e = expr_annotate(e, symtab_to_use, &error);
     }
     if (error) {
         static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1, 1);
@@ -2045,6 +2136,8 @@ lflow_destroy(void)
 {
     expr_symtab_destroy(&symtab);
     shash_destroy(&symtab);
+    expr_symtab_destroy(&acl_ct_symtab);
+    shash_destroy(&acl_ct_symtab);
 }
 
 bool
