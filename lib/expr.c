@@ -1818,7 +1818,21 @@ expr_symtab_destroy(struct shash *symtab)
         free(symbol);
     }
 }
-
+
+/* Removes the symbol with 'name' from 'symtab', freeing its memory.
+ * Does nothing if the symbol doesn't exist. */
+void
+expr_symtab_remove(struct shash *symtab, const char *name)
+{
+    struct expr_symbol *symbol = shash_find_and_delete(symtab, name);
+    if (symbol) {
+        free(symbol->name);
+        free(symbol->prereqs);
+        free(symbol->predicate);
+        free(symbol);
+    }
+}
+
 /* Cloning. */
 
 static struct expr *

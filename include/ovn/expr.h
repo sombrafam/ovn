@@ -319,6 +319,7 @@ struct expr_symbol *expr_symtab_add_ovn_field(struct shash *symtab,
                                               const char *name,
                                               enum ovn_field_id id);
 void expr_symtab_destroy(struct shash *symtab);
+void expr_symtab_remove(struct shash *symtab, const char *name);
 
 /* Expression type. */
 enum expr_type {

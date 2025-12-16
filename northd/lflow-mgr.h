@@ -24,6 +24,7 @@
 struct ovsdb_idl_txn;
 struct ovn_datapath;
 struct ovsdb_idl_row;
+struct ovn_lflow;
 
 /* lflow map which stores the logical flows. */
 struct lflow_table {
@@ -77,7 +78,8 @@ bool lflow_ref_sync_lflows(struct lflow_ref *,
                            const struct sbrec_logical_dp_group_table *);
 
 
-void lflow_table_add_lflow(struct lflow_table *, const struct ovn_datapath *,
+struct ovn_lflow *lflow_table_add_lflow(struct lflow_table *,
+                           const struct ovn_datapath *,
                            const unsigned long *dp_bitmap,
                            size_t dp_bitmap_len, enum ovn_stage stage,
                            uint16_t priority, const char *match,
@@ -86,6 +88,10 @@ void lflow_table_add_lflow(struct lflow_table *, const struct ovn_datapath *,
                            const struct ovsdb_idl_row *stage_hint,
                            const char *where, const char *flow_desc,
                            struct lflow_ref *);
+
+/* Set the acl_ct_trans flag on an lflow. When true, ovn-controller will
+ * use a symbol table that maps L4 port fields to CT equivalents. */
+void ovn_lflow_set_acl_ct_trans(struct ovn_lflow *lflow, bool acl_ct_trans);
 
 /* Adds a row with the specified contents to the Logical_Flow table. */
 #define ovn_lflow_add_with_hint__(LFLOW_TABLE, OD, STAGE, PRIORITY, MATCH, \
