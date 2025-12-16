@@ -24,6 +24,7 @@
 struct ovsdb_idl_txn;
 struct ovn_datapath;
 struct ovsdb_idl_row;
+struct ovn_lflow;
 
 /* lflow map which stores the logical flows. */
 struct lflow_table {
@@ -89,7 +90,12 @@ struct lflow_table_add_args {
     const char *where;
 };
 
-void lflow_table_add_lflow(struct lflow_table_add_args *args);
+struct ovn_lflow *lflow_table_add_lflow(struct lflow_table_add_args *args);
+
+/* Set the acl_ct_translation flag on an lflow. When true, ovn-controller will
+ * use a symbol table that maps L4 port fields to CT equivalents. */
+void ovn_lflow_set_acl_ct_translation(struct ovn_lflow *lflow,
+                                      bool acl_ct_translation);
 
 
 #define WITH_HINT(HINT) .stage_hint = HINT
