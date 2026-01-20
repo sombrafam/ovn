@@ -5880,11 +5880,20 @@ build_ls_stateful_rec_pre_acls(
                       "(udp && udp.src == 546 && udp.dst == 547)", "next;",
                       lflow_ref);
 
-        /* Do not send multicast packets to conntrack. */
-        ovn_lflow_add(lflows, od, S_SWITCH_IN_PRE_ACL, 110, "eth.mcast",
-                      "next;", lflow_ref);
-        ovn_lflow_add(lflows, od, S_SWITCH_OUT_PRE_ACL, 110, "eth.mcast",
-                      "next;", lflow_ref);
+        /* Do not send multicast packets to conntrack unless ACL CT
+         * translation is enabled.  When translation is active, L4 port
+         * fields are rewritten to their CT equivalents (e.g. udp.dst ->
+         * ct_udp.dst), which requires ct.trk to be set.  Skipping CT
+         * for multicast would leave ct.trk unset and cause all
+         * CT-translated ACL matches to fail for multicast traffic
+         * (including DHCP).  The trade-off is a potential multicast
+         * performance cost that should be documented. */
+        if (!acl_udp_ct_translation) {
+            ovn_lflow_add(lflows, od, S_SWITCH_IN_PRE_ACL, 110, "eth.mcast",
+                          "next;", lflow_ref);
+            ovn_lflow_add(lflows, od, S_SWITCH_OUT_PRE_ACL, 110, "eth.mcast",
+                          "next;", lflow_ref);
+        }
 
         /* Ingress and Egress Pre-ACL Table (Priority 100).
          *

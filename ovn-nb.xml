@@ -435,8 +435,16 @@
           stateful ACL rules that match on UDP port fields to use connection
           tracking fields (ct_udp.dst, ct_udp.src) to properly handle IP
           fragments. This ensures that fragmented UDP packets
-          match ACLs correctly. By default this option is set to
-          <code>false</code>.
+          match ACLs correctly.
+        </p>
+        <p>
+          <em>Important:</em> Enabling this option also disables the multicast
+          conntrack bypass, which means multicast traffic (including DHCP) will
+          go through connection tracking. This may have a performance impact on
+          multicast-heavy workloads.
+        </p>
+        <p>
+          By default this option is set to <code>false</code>.
         </p>
       </column>
 
